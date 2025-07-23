@@ -1,9 +1,10 @@
 plugins {
     id("java")
+    `java-library`
 }
 
-group = "org.example"
-version = "1.0-SNAPSHOT"
+group = "com.github.yousunmok"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
