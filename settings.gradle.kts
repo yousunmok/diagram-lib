@@ -1,2 +1,3 @@
-rootProject.name = "diagram-lib"
+rootProject.name = "diagram-project"
 
+include("diagram-core", "diagram-agent")
