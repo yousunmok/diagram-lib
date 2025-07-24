@@ -4,10 +4,8 @@ import diagramlib.core.diagram.Diagram;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
-import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Method;
-import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,45 +16,31 @@ public class DiagramAgent {
     public static void premain(String agentArgs, Instrumentation inst) {
         System.out.println("[DiagramAgent] Agent started.");
 
-        inst.addTransformer(new ClassFileTransformer() {
-            @Override
-            public byte[] transform(
-                    ClassLoader loader,
-                    String className,
-                    Class<?> classBeingRedefined,
-                    ProtectionDomain protectionDomain,
-                    byte[] classfileBuffer
-            ) {
-                if (className == null
-                        || className.startsWith("java/")
-                        || className.startsWith("javax/")
-                        || className.startsWith("sun/")
-                        || className.startsWith("diagramlib/agent")) {
-                    return null;
-                }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                for (Class<?> loadedClass : inst.getAllLoadedClasses()) {
+                    // 시스템 클래스는 제외
+                    String className = loadedClass.getName();
+                    if (!inst.isModifiableClass(loadedClass)) continue;
+                    if (className.startsWith("java.") || className.startsWith("sun.") || className.startsWith("jdk.")
+                            || className.startsWith("javax.") || className.startsWith("diagramlib.agent")) {
+                        continue;
+                    }
 
-                try {
-                    Class<?> cls = classBeingRedefined;
-                    if (cls != null) {
-                        for (Method method : cls.getDeclaredMethods()) {
-                            if (method.isAnnotationPresent(Diagram.class)) {
-                                String methodName = method.getName();
-                                mermaidLines.add("    Start --> " + methodName + "()");
-                            }
+                    for (Method method : loadedClass.getDeclaredMethods()) {
+                        if (method.isAnnotationPresent(Diagram.class)) {
+                            mermaidLines.add("    Start --> " + loadedClass.getSimpleName() + "." + method.getName() + "()");
                         }
                     }
-                } catch (Throwable e) {
-                    System.err.println("[DiagramAgent] Error: " + e.getMessage());
                 }
 
-                return null;
-            }
-        }, false);
-
-        // JVM 종료 직전 Mermaid HTML 저장
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (!mermaidLines.isEmpty()) {
-                writeMermaidHtml(mermaidLines);
+                if (!mermaidLines.isEmpty()) {
+                    writeMermaidHtml(mermaidLines);
+                } else {
+                    System.out.println("[DiagramAgent] No diagram annotations found.");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }));
     }
