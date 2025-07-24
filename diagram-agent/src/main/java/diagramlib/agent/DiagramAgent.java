@@ -7,8 +7,10 @@ public class DiagramAgent {
     public static void premain(String agentArgs, Instrumentation inst) {
         System.out.println("DiagramAgent started.");
 
+        // `true` 제거 → 기본값은 `false`
         inst.addTransformer((loader, className, classBeingRedefined, protectionDomain, classfileBuffer) -> {
             try {
+                // '/' → '.' 로 바꿔서 클래스 이름 변환
                 Class<?> cls = Class.forName(className.replace('/', '.'), false, loader);
 
                 for (Method method : cls.getDeclaredMethods()) {
@@ -18,8 +20,10 @@ public class DiagramAgent {
                         System.out.println("    Start --> " + methodName + "()");
                     }
                 }
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+                // 로깅 추가 권장
+            }
             return null;
-        }, true);
+        });
     }
 }
